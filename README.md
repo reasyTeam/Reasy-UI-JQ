@@ -5,7 +5,7 @@ Form表单组件库，[使用文档](https://moshang-xc.github.io/Reasy-UI/)
 
 ```
 #clone
-git clone https://github.com/moshang-xc/Reasy-UI.git
+git clone https://github.com/reasyTeam/Reasy-UI.git
 cd Reasy-UI
 
 #安装依赖
