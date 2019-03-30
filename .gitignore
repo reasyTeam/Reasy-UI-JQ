@@ -1,0 +1,12 @@
+#npm
+node_modules/
+
+#osx
+.DS_Store
+
+#dist
+dist/
+
+#doc
+doc/
+.svn/
