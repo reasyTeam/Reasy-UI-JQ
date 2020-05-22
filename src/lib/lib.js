@@ -1072,6 +1072,7 @@ $.valid = {
 };
 
 var enCodeChar = {
+        ' ': '&nbsp;',
         '<': '&lt;',
         '>': '&gt;',
         '"': '&quot;',
@@ -1091,8 +1092,27 @@ $.htmlEncode = function(str) {
 
     str += '';
     return str.replace(/[<>\"\']/g, function(c) {
-        return enCodeChar[c];
+        return enCodeChar[c] ? enCodeChar[c] : c;
     });
+}
+
+$.htmlCode = function (str,reg = /\s|<|>|"/g ) {
+    str += '';
+    str = str.replace(reg, function(a) {
+        return enCodeChar[a] ? enCodeChar[a] : a;
+    });
+    return str;
+}
+
+// 转换单引号和双引号，避免htmlstr 有问题
+$.htmlProp = function (str,regStr = "\"" ) {
+
+    let reg = new RegExp(regStr,'g');
+    str += '';
+    str = str.replace(reg, function(a) {
+        return a == "\"" ? "\'" : "\"";
+    });
+    return str;
 }
 
 $.htmlDecode = function(str) {
@@ -1105,4 +1125,24 @@ $.htmlDecode = function(str) {
     return str.replace(reg, function(c) {
         return decodeChar[c];
     });
+}
+
+// 高亮显示搜索出来的字符
+// 被搜索的词汇
+// 搜索框的输入值
+// 是否要对特殊字符转换  比如说 IP地址就不用
+$.highLightStr = function(str,filterValue,needHtmlcode,filterModifier = 'ig'){
+    if(needHtmlcode){
+        let uniqueStr = `\&unique\-${new Date().getTime()}\;`,  // 创建一个唯一字符串，用于替换匹配的字符
+        matchHtmlArr = [];  // 存储匹配字符生成的html
+
+        str = str.replace(new RegExp(filterValue, filterModifier), matchValue => {
+            matchHtmlArr.push(`<span class="bold">${$.htmlEncode(matchValue)}</span>`);
+            return uniqueStr;
+        });
+        return  $.htmlEncode(str).replace(new RegExp(uniqueStr, 'g'), () => matchHtmlArr.shift());
+    }else{
+        return str.replace(new RegExp(filterValue, filterModifier), matchValue => `<span class="bold">${matchValue}</span>`)
+    }
+
 }
