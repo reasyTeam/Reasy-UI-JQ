@@ -25,6 +25,7 @@
         text: '', //文本框前面显示的数据，该数据最后会与input内部的数据合并成组件的value值
         maxLength: null,
         regExp: '',
+        displayMode:'edit',
         valueType: VALUE_TYPE.STRING,
         dataOptions: [], //[{type:'',args:[]}] 自身数据的校验
         inputCfg: [], //文本输入框的的配置信息，必须为数组
@@ -57,9 +58,9 @@
 
         //渲染html内容
         htmlRender: function() {
-            if (!this.editable) {
-                this.$element.attr('disabled', 'disabled').addClass('form-disabled');
-            } else {
+            // if (!this.editable) {
+            //     this.$element.attr('disabled', 'disabled').addClass('form-disabled');
+            // } else {
                 let htmlNode = '',
                     text = this.option.text;
                 if (this.option.joiner && text && text.lastIndexOf(this.option.joiner) === text.length - 1) {
@@ -79,7 +80,7 @@
                 this.$inputText = this.$element.find('.form-multi-text');
 
                 this.initComponents();
-            }
+            // }
         },
 
         initComponents: function() {
@@ -88,6 +89,7 @@
             for (let i = 0, l = this.option.inputCount; i < l; i++) {
                 let obj = {
                     css: 'form-multi-input',
+                    editable: this.editable,
                     maxLength: that.option.maxLength,
                     regExp: that.option.regExp,
                     autoChange: that.option.autoChange,

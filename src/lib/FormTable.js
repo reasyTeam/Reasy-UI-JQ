@@ -1,17 +1,13 @@
 (function($) {
   let PAGELEFTTYPE = {
-      TOTAL: 1, // 共X页，X条数据
-      SELECT: 2 // 显示每页条数选择框，且显示总条数
-    },
-    htmlCode = {
-      ' ': '&nbsp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;'
-    };
+    TOTAL: 1, // 共X页，X条数据
+    SELECT: 2 // 显示每页条数选择框，且显示总条数
+  };
   let DEFAULT = {
     data: [], //表格数据
     requestUrl: "",
+    cacheCheck: false, // 自动更新时是否更新前面的选择框
+    autoRequest: true, // 初始化时是否自动请求数据
     requestOpt: {},
     perArray: [10, 20, 30, 50], //每页显示条数数组
     perNum: 10, //每页显示的数据数
@@ -65,6 +61,7 @@
     ],
     dataTarget: "",
     filterProperty: [],
+    filterModifier: "ig",//搜索模式  不区分大小写 全局搜索 为正则的模式 
     actionColumn: {
       columnName: _("Operation"),
       actions: [
@@ -209,8 +206,8 @@
 
       let _this = this;
       this.hasInit || this.tableHandle.createHead.call(this);
-      if (this.requestUrl) {
-        this.requestData(function() {
+      if (this.requestUrl && this.autoRequest) {
+        this.requestData(function () {
           _this.hasInit || _this.bindEvent.call(_this);
           _this.hasInit = true;
           _this.showPageLeftBar || _this.footBar.$pageLeft && _this.footBar.$pageLeft.hide();
@@ -230,7 +227,11 @@
       }
     },
     //更新表格数据
-    updateTable: function() {
+    updateTable: function () {
+      this.cacheCheck && (this.selectedRow = this.getSelected());
+      if (this.keyType === undefined && this.data.length > 0) {
+        this.keyType = typeof this.data[0][this.key];
+      }
       let length = this.data.length;
       if (this.maxLength && this.maxLength < length) {
         length = this.maxLength;
@@ -313,10 +314,12 @@
     },
 
     //刷新table
-    reLoad: function(data) {
-      this.selectedRow = [];
+    reLoad: function (data) {
+      // 如果需要缓存，则不清空selected 
+      this.cacheCheck || (this.selectedRow = []);
+
       if (data) {
-        this.orignalData = data;
+        this.orignalData = (this.dataTarget && data[this.dataTarget]) ? data[this.dataTarget] : data;
         this.updateData();
         // if (typeof this.updateCallback == 'function') {
         //     this.updateCallback.apply(this, arguments);
@@ -389,7 +392,7 @@
               pData = curData[curP];
             if (pData !== "" && pData !== undefined) {
               if (typeof pData === 'string') {
-                if (pData.indexOf(this.filterValue) > -1) {
+                if (_includes(pData, this.filterValue, this.filterModifier)) {
                   this.data.push(curData);
                   break;
                 }
@@ -402,11 +405,11 @@
             } else if (curP.indexOf("#") > -1) { //对于A#B类型的筛选字段，如A有值则按A字段查找，否则按B字段查找
               let curps = curP.split("#");
               if (curData[curps[0]]) {
-                if (curData[curps[0]].indexOf(this.filterValue) > -1) {
+                if (_includes(curData[curps[0]], this.filterValue, this.filterModifier)) {
                   this.data.push(curData);
                   break;
                 }
-              } else if (curps.length > 1 && curData[curps[1]] && curData[curps[1]].indexOf(this.filterValue) > -1) {
+              } else if (curps.length > 1 && curData[curps[1]] && _includes(curData[curps[1]], this.filterValue, this.filterModifier)) {
                 this.data.push(curData);
                 break;
               }
@@ -414,7 +417,7 @@
           }
         }
       } else {
-        this.data = this.orignalData;
+        this.data = this.orignalData ? this.orignalData : [];
       }
     },
 
@@ -587,15 +590,16 @@
                       node = fObj.format(node, fObj.field, dataObj);
                     } else if (node) {
                       node = node + '';
-                      node = node.replace(/(\s|<|>|")/g, function(a) {
-                        return htmlCode[a];
-                      });
+                      node = $.htmlCode(node);
+                      this.filterValue = $.htmlCode(this.filterValue);
                       //高亮筛选字符
                       if (this.autoHighLight && this.filterValue && node && this.filterProperty.indexOf(dataField) > -1) {
-                        node = node.replace(new RegExp(this.filterValue, "g"), '<span  class="bold">' + this.filterValue + '</span>');
+                        node = $.highLightStr(node, this.filterValue, false, this.filterModifier);
                       }
                       $col.attr('title', dataObj[dataField]);
                       //end
+                    }else{
+                      $col.attr('title', '');
                     }
 
                     node = node === '' ? '--' : node;
@@ -643,12 +647,12 @@
                     node = fObj.format(node, fObj.field, dataObj);
                   } else if (node) {
                     node = node + '';
-                    node = node.replace(/(\s|<|>)/g, function(a) {
-                      return htmlCode[a];
-                    });
+                    node = $.htmlCode(node)
+                    this.filterValue = $.htmlCode(this.filterValue);
                     //高亮筛选字符
                     if (this.autoHighLight && this.filterValue && node && this.filterProperty.indexOf(field) > -1) {
-                      node = node.replace(new RegExp(this.filterValue, "g"), '<span  class="bold">' + this.filterValue + '</span>');
+
+                      node = node.replace(new RegExp(this.filterValue, this.filterModifier), matchValue => `<span class="bold">${matchValue}</span>`);
                     }
                     //end
                   }
@@ -718,19 +722,19 @@
         _this.totalColumn = _this.columnCount;
         if (_this.showIndex) {
           headHtml = headHtml.replace(/(<tr>)/g, '$1<th>' + _("ID") + '</th>');
-          _this.totalColumn = _this.columnCount + 1;
+          _this.totalColumn = _this.totalColumn + 1;
         }
 
         if (_this.showCheckbox) {
           let ID = $.IGuid();
           headHtml = headHtml.replace(/(<tr>)/g, '$1<th class="check"><label for="' + ID + '" class="table-ckeck-l icon-check-off"><input id="' + ID + '" type="checkbox" class="table-check check-all"/></label></th>');
-          _this.totalColumn = _this.columnCount + 1;
+          _this.totalColumn = _this.totalColumn + 1;
         }
 
         if (_this.hasActionColumn) {
           let actionObj = _this.actionColumn;
           headHtml = headHtml.replace(/(<\/tr>)/g, '<th ' + (actionObj["width"] ? 'width="' + actionObj["width"] + '"' : "") + '>' + _this.actionColumn.columnName + '</th>$1');
-          _this.totalColumn = _this.columnCount + 1;
+          _this.totalColumn = _this.totalColumn + 1;
         }
 
         _this.$thead.html(headHtml).find("th").addClass('form-table-th').end().appendTo(_this.$element);
@@ -835,6 +839,7 @@
       //分页
       this.footBar.$insertArea.off("change.FormTable").on("change.FormTable", ".select-page", function() {
         _this.perNum = ~~(this.value);
+        _this.selectedRow = [];
         // console.log(_this.perNum);
         //重新渲染table
         _this.updateTable.call(_this);
@@ -1014,11 +1019,12 @@
     //以下为调用者可操作的方法
     getSelected: function() {
       let index = [];
+      let _this = this;
       // this.$tbody.children('tr:not(.none)').find('input.table-check:checked').each(function(argument) {
       //     index.push(parseInt($(this).attr("data-key")));
       // });
-      this.$tbody.children('tr:not(.none)').find('input.table-check:checked').each(function(argument) {
-        index.push(parseInt($(this).attr("data-key")));
+      this.$tbody.children('tr:not(.none)').find('input.table-check:checked').each(function (argument) {
+        index.push(_this.keyType === 'number' ? parseInt($(this).attr("data-key")) : $(this).attr("data-key"));
       });
       return index;
     },
@@ -1240,6 +1246,20 @@
       }
     }
     return Number(ipStr);
+  }
+
+  /**
+   * str1是否包含有str2
+   * @param {String} str1 - 字符串1
+   * @param {String} str2 - 字符串2
+   * @param {String} igoreCase - 是否忽略大小写，同正则表达式的修饰符
+   * @returns {Boolean} - true包含/false不包含
+   */
+  function _includes(str1, str2, igoreCase = 'g') {
+    if(igoreCase.includes('i')) {
+      return str1.toLowerCase().includes(str2.toLowerCase());
+    }
+    return str1.includes(str2);
   }
 
 }(jQuery));

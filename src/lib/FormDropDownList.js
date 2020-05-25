@@ -29,14 +29,10 @@
             needRecover: false,
             inline: false,
             maxLength: null,
+            width: 0,
             switchCallBack: null,
             blurCallBack: null,
             focusCallBack: null //自定义情况下文本框获取焦点回调函数
-        },
-        htmlCode = {
-            ' ': '&nbsp;',
-            '<': '&lt;',
-            '>': '&gt;'
         };
 
     // 选项池，对下拉选项进行缓存
@@ -161,6 +157,9 @@
                 this.dropInput.hide();
                 this.$DropHandle.find(".drop-input").removeClass('none');
             }
+            if (this.option.width) {
+                this.$DropList.css('width', this.option.width);
+            }
             this.$DropList.css('min-width', this.$element.outerWidth());
             this.updateItems(this.option.selectArray);
         },
@@ -241,9 +240,7 @@
                 let item = keyValues[i];
                 for (let key in item) {
                     i === 0 && this.setDefaultValue(key);
-                    let text = (item[key] + '').replace(/(\s|<|>)/g, function(a) {
-                        return htmlCode[a];
-                    });
+                    let text = $.htmlCode(item[key]);
                     nodeHtml += this.createHtml(this.ID + $.IGuid(), key, text);
                     selectOption += '<option value="' + key + '">' + text + '</option>';
                     items[key] = item[key];
@@ -494,7 +491,8 @@
             } else {
                 let text = this.items[val] || val + this.unit;
                 this.$DropText.text(text).attr("title", $.htmlEscape(text));
-                if (this.items[val]) {
+                // 避免出现值为 0时不进入的状况
+                if (this.items[val] !== "" && this.items[val] !== undefined) {
                     this.$DropList.find("li[data-value='" + $.htmlEncode(val) + "']").addClass('active');
                     this.hasCustom && this.switchDisplay(false);
                 } else {
