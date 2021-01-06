@@ -1,5 +1,5 @@
 # Reasy-UI
-Form表单组件库，[使用文档](https://moshang-xc.github.io/Reasy-UI/)
+Form表单组件库，[使用文档](https://reasyteam.github.io/Reasy-UI-JQ/)
 
 ## 克隆代码到本地
 
